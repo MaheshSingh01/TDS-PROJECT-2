@@ -449,7 +449,7 @@ def manage_github_email_json(params: Dict) -> str:
         import requests
         import base64
         # Configuration
-        owner = 'MaheshSingh01'  # replace with your GitHub username
+        owner = 'MaheshSingh01'  
         repo = 'tdsprojec2'
         path = 'email.json'
         branch = 'main'
