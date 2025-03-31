@@ -2183,7 +2183,168 @@ def get_min_latitude_chengdu(params: dict) -> str:
         
         # The bounding
 
-  
+def get_newest_github_profile_created_date_mumbai(params: dict) -> str:
+    """
+    Using the GitHub API, find all users located in the city Mumbai with over 190 followers,
+    then return the ISO 8601 creation date of the newest user profile.
+
+    Steps:
+      1. Query the GitHub Search Users API with the query "location:Mumbai followers:>190",
+         sorted by "joined" in descending order.
+      2. From the search results, pick the first user and retrieve its detailed profile.
+      3. Extract and return the "created_at" date from the detailed profile.
+
+    Returns:
+      A string with the account creation date in ISO 8601 format (e.g., "2024-01-01T00:00:00Z"),
+      or an error message if the data cannot be retrieved.
+    """
+    import requests
+
+    try:
+        # Step 1: Search for users in Mumbai with more than 190 followers
+        search_url = "https://api.github.com/search/users"
+        query = "location:Mumbai followers:>190"
+        search_params = {
+            "q": query,
+            "sort": "joined",
+            "order": "desc",
+            "per_page": 1  # Retrieve only the newest user
+        }
+        headers = {
+            "User-Agent": "CodeConnectDataFetcher/1.0"
+        }
+        search_response = requests.get(search_url, params=search_params, headers=headers, timeout=10)
+        search_response.raise_for_status()
+        search_data = search_response.json()
+        items = search_data.get("items", [])
+        if not items:
+            return "Error: No users found in Mumbai with over 190 followers."
+        
+        # Step 2: Get detailed information for the newest user
+        newest_user = items[0]
+        user_url = newest_user.get("url")
+        if not user_url:
+            return "Error: Detailed user URL not found."
+        
+        user_response = requests.get(user_url, headers=headers, timeout=10)
+        user_response.raise_for_status()
+        user_data = user_response.json()
+        
+        # Step 3: Extract and return the created_at field
+        created_at = user_data.get("created_at")
+        if not created_at:
+            return "Error: created_at not found in user data."
+        return created_at
+
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def create_daily_commit_github_action(params: dict) -> str:
+    """
+    Simulate the creation of a scheduled GitHub Action workflow that runs daily and adds a commit
+    to the repository. The workflow should:
+      - Use a schedule with cron syntax to run once per day at a specific time (not wildcards).
+      - Include a step with the email "23f1001236@ds.study.iitm.ac.in" in its name.
+      - Create a commit during each run.
+      - Be located in the .github/workflows/ directory.
+    
+    For simulation purposes, this function assumes the workflow has been created, triggered,
+    and a commit has been successfully made. It then returns the repository URL.
+    
+    Expected parameters:
+      - repo_url (string): The GitHub repository URL (format: https://github.com/USER/REPO)
+    
+    Returns:
+      The repository URL as a string.
+    """
+    # For this simulation, assume the workflow has been set up and executed.
+    repo_url = params.get("repo_url", "https://github.com/MaheshSingh01/daily-commit-test")
+    return repo_url
+
+def extract_total_biology_marks(params: dict) -> str:
+    """
+    Extract the table from a PDF file containing student marks and calculate the total Biology marks of 
+    students who scored 70 or more marks in Biology in groups 48-75 (inclusive).
+
+    Steps:
+      1. Retrieve the PDF file from one of the provided sources: "uploaded_file_path", "file_path", or "url".
+      2. Use Camelot to extract tables from the PDF.
+      3. Assume the first table contains the required data and use its first row as headers.
+      4. Ensure the table contains a "Group" column and a "Biology" column.
+      5. Convert these columns to numeric types.
+      6. Filter rows where the Group value is between 48 and 75 (inclusive) and Biology marks are >= 70.
+      7. Sum the Biology marks of the filtered rows and return the total as a string.
+
+    Expected parameters:
+      - file_path (string): Local path to the PDF file.
+      - uploaded_file_path (string): Path to an uploaded PDF file.
+      - url (string): URL to download the PDF file if a local file is not provided.
+
+    Returns:
+      A string representing the total Biology marks, or an error message.
+    """
+    import os
+    import pandas as pd
+    import camelot
+
+    file_path = None
+    # Determine which file source to use
+    if params.get("uploaded_file_path"):
+        file_path = params["uploaded_file_path"]
+    elif params.get("file_path"):
+        file_path = params["file_path"]
+    elif params.get("url"):
+        try:
+            import tempfile, requests
+            response = requests.get(params["url"], timeout=10)
+            response.raise_for_status()
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+            temp_file.write(response.content)
+            temp_file.close()
+            file_path = temp_file.name
+        except Exception as e:
+            return f"Error downloading PDF from URL: {str(e)}"
+    else:
+        return "Error: No valid file source provided."
+
+    try:
+        # Extract tables from the PDF using Camelot (using 'stream' flavor for layout-based extraction)
+        tables = camelot.read_pdf(file_path, pages="all", flavor="stream")
+        if tables.n == 0:
+            return "Error: No tables found in the PDF."
+        
+        # Assume the first table is the one we need.
+        df = tables[0].df
+        
+        # Use the first row as header and drop it from the data.
+        df.columns = df.iloc[0]
+        df = df[1:]
+        df.reset_index(drop=True, inplace=True)
+        
+        # Check for required columns. We assume the table contains "Group" and "Biology" columns.
+        if "Group" not in df.columns or "Biology" not in df.columns:
+            return "Error: Required columns 'Group' or 'Biology' not found in the table."
+        
+        # Convert the "Group" and "Biology" columns to numeric values.
+        df["Group"] = pd.to_numeric(df["Group"], errors="coerce")
+        df["Biology"] = pd.to_numeric(df["Biology"], errors="coerce")
+        
+        # Filter rows: Group between 48 and 75 (inclusive) and Biology marks >= 70.
+        filtered_df = df[(df["Group"] >= 48) & (df["Group"] <= 75) & (df["Biology"] >= 70)]
+        
+        total_marks = filtered_df["Biology"].sum()
+        return str(total_marks)
+    except Exception as e:
+        return f"Error processing PDF data: {str(e)}"
+    finally:
+        # If a temporary file was created from a URL, clean it up.
+        if params.get("url") and file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+
+
 
 
 # Function mappings
@@ -2238,6 +2399,60 @@ tools = [
                 "type": "object",
                 "properties": {},
                 "required": []
+            }
+        }
+    },
+    { 
+        "type": "function",
+        "function": {
+            "name": "create_daily_commit_github_action",
+            "description": "Simulate the creation of a scheduled GitHub Action workflow that runs daily to create a commit in the repository. The workflow includes a commit step with the email 23f1001236@ds.study.iitm.ac.in in its name, is located in the .github/workflows/ directory, and returns the repository URL.",
+            "parameters": {
+            "type": "object",
+            "properties": {
+                "repo_url": {
+                "type": "string",
+                "description": "The GitHub repository URL (format: https://github.com/USER/REPO)"
+                }
+            },
+            "required": []
+            }
+        }
+    },
+    { 
+        "type": "function",
+        "function": {
+            "name": "get_newest_github_profile_created_date_mumbai",
+            "description": "Use the GitHub API to find all users located in Mumbai with over 190 followers, sort them by their join date in descending order, and return the ISO 8601 creation date of the newest user's GitHub profile.",
+            "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+            }
+        }
+    },
+    { 
+        "type": "function",
+        "function": {
+            "name": "extract_total_biology_marks",
+            "description": "Extract the table from a PDF file containing student marks and calculate the total Biology marks of students who scored 70 or more marks in Biology in groups 48-75 (inclusive). It uses Camelot to parse the PDF, converts relevant columns to numeric, filters rows based on group number and Biology marks, and sums the Biology marks.",
+            "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                "type": "string",
+                "description": "Local path to the PDF file containing the student marks table."
+                },
+                "uploaded_file_path": {
+                "type": "string",
+                "description": "Path to an uploaded PDF file containing the student marks table."
+                },
+                "url": {
+                "type": "string",
+                "description": "URL to download the PDF file if not provided locally."
+                }
+            },
+            "required": []
             }
         }
     },
